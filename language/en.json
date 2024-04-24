@@ -1,0 +1,19 @@
+{
+    "button": {
+        "activate_button": "Activate",
+        "info_button": "Info",
+        "statistics_button": "Statistics",
+        "help_button": "Help",
+        "language_button": "Language",
+        "stop_button": "Stop",
+        "back": "Back"
+    },
+    "message": {
+        "start_message": "The bot provides users with notifications about the availability of appointment slots (situation) at DGT for exchanging driver's licenses.",
+        "help_message": "The bot provides general information about the user agreement and contact details for collaboration.",
+        "info_message": "Current status of your subscription",
+        "language_selection_message": "Please select a language.",
+        "selected_language": "You have selected the language",
+        "change_language": "Language changed to"
+    }
+}
