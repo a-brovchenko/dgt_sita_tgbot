@@ -12,8 +12,49 @@
         "start_message": "The bot provides users with notifications about the availability of appointment slots (situation) at DGT for exchanging driver's licenses.",
         "help_message": "The bot provides general information about the user agreement and contact details for collaboration.",
         "info_message": "Current status of your subscription",
-        "language_selection_message": "Please select a language.",
-        "selected_language": "You have selected the language",
-        "change_language": "Language changed to"
+        "language_selection_message": "Please select a language",
+        "selected_language": "You have selected the language: ",
+        "change_language": "Language changed to: ",
+        "chose_region_message": "Please enter the region for tracking",
+        "іncorrectone_message": "You entered the wrong region, please try again",
+        "price_message": "If you want to receive notifications for the selected region, please choose the conditions \nSelected region: "
+    },
+    "button_statistic": {
+        "all_statistic": "Slots available across Spain",
+        "region_statistic": "Slots available in selected region",
+        "number_of_users": "Number of bot users"
+    },
+    "language_button":{
+        "en": "English",
+        "ru": "Russian",
+        "uk": "Ukrainian"
+    },
+    "language":{
+        "en": "english",
+        "ru": "russian",
+        "uk": "ukrainian"
+    },
+    "regions_spain":{
+        "region1": "Andalusia",
+        "region2": "Aragon",
+        "region3": "Asturias",
+        "region4": "Balearic Islands",
+        "region5": "Canary Islands",
+        "region6": "Cantabria",
+        "region7": "Castilla-La Mancha",
+        "region8": "Castile and León",
+        "region9": "Catalonia",
+        "region10": "Extremadura",
+        "region11": "Galicia",
+        "region12": "Madrid",
+        "region13": "Murcia",
+        "region14": "Navarre",
+        "region15": "Basque Country",
+        "region16": "La Rioja",
+        "region17": "Valencia"
+    },
+    "price":{
+        "price_button1": "7 days for 15 euros",
+        "price_button2": "Unlimited for 45 euros per month"
     }
 }

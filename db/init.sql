@@ -3,5 +3,6 @@ CREATE TABLE IF NOT EXISTS users (
     telegram_chat_id BIGINT,
     nickname VARCHAR(255),
     language TEXT,
+    region VARCHAR(20) DEFAULT NULL,
     payment_method VARCHAR(255) DEFAULT NULL
   );
