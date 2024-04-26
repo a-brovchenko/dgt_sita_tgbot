@@ -1,6 +1,7 @@
-import psycopg2
 from dotenv import dotenv_values
 import os
+import asyncpg
+import asyncio
 
 
 # variables in .env file
@@ -8,104 +9,118 @@ dotenv_variables = {
     **dotenv_values()
 }
 
+import asyncpg
+from dotenv import dotenv_values
+
+dotenv_variables = dotenv_values()
 
 class BotDatabase:
-    """
-    class for creating a connection to a db
-    """
 
     def __init__(self, database, host, user, password, port):
-        self.database = database
-        self.host = host
-        self.user = user
-        self.password = password
-        self.port = port
-        self.connection = None
-        self.cursor = None
+        self.dsn = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+        self.pool = None
 
-
-    def connect(self):
+    async def connect(self):
         try:
-            self.connection = psycopg2.connect(
-                database=self.database,
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                port=self.port
-            )
-            self.cursor = self.connection.cursor()
+            self.pool = await asyncpg.create_pool(dsn=self.dsn)
         except Exception as e:
-            print("Error executing query:", e)
+            print("Error connecting to database:", e)
+
+    async def close(self):
+        if self.pool is not None:
+            await self.pool.close()
+            self.pool = None
+
+    async def execute(self, query, *args):
+        async with self.pool.acquire() as connection:
+            async with connection.transaction():
+                return await connection.execute(query, *args)
+
+    async def fetch(self, query, *args):
+        async with self.pool.acquire() as connection:
+            async with connection.transaction():
+                return await connection.fetch(query, *args)
+
+    async def fetchrow(self, query, *args):
+        async with self.pool.acquire() as connection:
+            async with connection.transaction():
+                return await connection.fetchrow(query, *args)
 
 
-    def check_user_id(self, user_id):
-        query = "SELECT user_id, language FROM users WHERE user_id = %s"
-        self.cursor.execute(query, (user_id,))
-        return self.cursor.fetchone()
+    async def check_user_id(self, user_id):
+        query = "SELECT user_id, language FROM users WHERE user_id = $1"
+        row = await self.fetchrow(query, user_id)
+        return row[0] if row else row
+    
 
-
-    def add_user(self, user_id, telegram_chat_id, nickname, language, payment_method=None):
+    async def add_user(self, user_id, telegram_chat_id, nickname, language, region=None, payment_method=None):
         query = """
-                INSERT INTO users (user_id, telegram_chat_id, nickname, language, payment_method)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO users (user_id, telegram_chat_id, nickname, region, language, payment_method)
+                VALUES ($1, $2, $3, $4, $5, $6)
             """
-        self.cursor.execute(query, (user_id, telegram_chat_id, nickname, language, payment_method))
-        self.connection.commit()
-        
-
-    def update_user(self, user_id, telegram_chat_id=None, nickname=None, language=None, payment_method=None):
-        update_params = []
-
-        # Проверяем на наличие параметра
-        if telegram_chat_id is not None:
-            update_params.append(f"telegram_chat_id = '{telegram_chat_id}'")
-        if nickname is not None:
-            update_params.append(f"nickname = '{nickname}'")
-        if language is not None:
-            update_params.append(f"language = '{language}'")
-        if payment_method is not None:
-            update_params.append(f"payment_method = '{payment_method}'")
-            
-        if update_params:
-                set_clause = ", ".join(update_params)
-                query = f"UPDATE users SET {set_clause} WHERE user_id = %s"
-                self.cursor.execute(query, (user_id,))
-                self.connection.commit()
-                return True
-
-        self.cursor.execute(query, (language, user_id))
-        self.conn.commit()
+        await self.execute(query, user_id, telegram_chat_id, nickname, region, language, payment_method)
 
 
-    def get_user_language(self, user_id):
-        query = "SELECT language, language FROM users WHERE user_id = %s"
-        self.cursor.execute(query, (user_id,))
-        return self.cursor.fetchone()[1]
+    async def update_user(self, user_id, **update_fields):
+        set_values = []
+        values = [user_id]
+
+        for field, value in update_fields.items():
+            set_values.append(f"{field} = ${len(values) + 1}")
+            values.append(value)
+
+        set_clause = ", ".join(set_values)
+        query = f"""
+                UPDATE users
+                SET {set_clause}
+                WHERE user_id = $1
+                """
+
+        await self.execute(query, *values)
 
 
-    def delete_user(self, user_id):
-        query = "DELETE FROM users WHERE user_id = %s"
-        self.cursor.execute(query, (user_id,))
-        self.connection.commit()  
+    async def delete_user(self, user_id):
+        query = "DELETE FROM users WHERE user_id = $1"
+        await self.execute_query(query, user_id)
 
+
+    async def get_payment_method(self, user_id):
+        query = "SELECT payment_method FROM users WHERE user_id = $1"
+        result = await self.fetchrow(query, user_id)
+        if result:
+            return result[0]
+        else:
+            return None
+
+
+    async def get_count_records(self):
+        query = "SELECT COUNT(*) FROM users"
+        result = await self.fetchrow(query)
+        return result[0] if result else 0
     
-    def get_payment_method(self, user_id):
-        query = "SELECT payment_method FROM users WHERE user_id = %s"
-        self.cursor.execute(query, (user_id,))
-        return self.cursor.fetchone()[0]
+
+    async def get_user_language(self, user_id):
+        query = "SELECT language FROM users WHERE user_id = $1"
+        result = await self.fetchrow(query, user_id)
+        return result[0]
     
-    
-    def close(self):
-        if self.connection:
-            self.cursor.close()
-            self.connection.close()
+
+# Создаем экземпляр класса BotDatabase для подключения к базе данных
+cursor = BotDatabase(
+    database=dotenv_variables['POSTGRES_DB'],
+    host=dotenv_variables['DB_HOST'],
+    user=dotenv_variables['POSTGRES_USER'],
+    password=dotenv_variables['POSTGRES_PASSWORD'],
+    port=dotenv_variables['DB_PORT']
+)
 
 
+# async def test():
+#     global cursor
+#     await cursor.connect()
+#     a = await cursor.update_user(346488140, language = 'te')
+#     print(a)
+#     await cursor.close()
 
-# db connect
-cursor = BotDatabase(database = dotenv_variables['POSTGRES_DB'],
-                        host = dotenv_variables['DB_HOST'],
-                        user = dotenv_variables['POSTGRES_USER'],
-                        password = dotenv_variables['POSTGRES_PASSWORD'],
-                        port = dotenv_variables['DB_PORT'])
-
+# # Запуск асинхронной функции
+# asyncio.run(test())
