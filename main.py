@@ -20,7 +20,7 @@ async def start(message):
     try:
         user_id = await cursor.check_user_id(user_id=message.chat.id)
         if user_id:
-            # Вызов меню
+            # calling a menu function
             await main(message=message)
         else:
             markup = types.InlineKeyboardMarkup()
@@ -36,25 +36,24 @@ async def start(message):
 
 @bot.callback_query_handler(func=lambda call: call.data in ['en', 'ru', 'uk'])
 async def language_callback_handler(call):
-    # Обработка выбора языка здесь
+    # select language and user_id 
     selected_language = call.data
     user_id = call.message.chat.id
 
-    # Выбор файла с текстом
+    # select language json file
     language_data = await load_language_file(selected_language)
 
-    # Сохраняем или обновляем выбранный язык пользователя в базе данных
     await cursor.connect()
     try:
         existing_user = await cursor.check_user_id(user_id)
 
         if existing_user:
-            # Если пользователь уже существует, обновляем его язык
+            # if the user already exists, update his language
             await cursor.update_user(user_id=user_id, language=selected_language)
             text = language_data["message"]["change_language"] + f"<b>{language_data["language"][selected_language]}</b>"
             await bot.send_message(user_id, text=text, parse_mode='HTML')
         else:
-            # Если пользователь новый, добавляем его в базу данных с выбранным языком
+            # if the user is new, add him to the database with the selected language
             await cursor.add_user(user_id, 
                             language=selected_language, 
                             nickname= call.message.chat.username if call.message.chat.username else None,
@@ -69,15 +68,15 @@ async def language_callback_handler(call):
 
 
 async def main(message):
-    # Проверка на Message или CallbackQuery
+    # validation on Message or CallbackQuery
     user_id = message.chat.id if isinstance(message, types.Message) else message.from_user.id
     await cursor.connect()
     try:
-        # Получаем код языка из бд
+        # getting the language code from the database
         language_code = await cursor.get_user_language(user_id=user_id)
         language_data = await load_language_file(language_code=language_code)
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton(language_data["button"]["activate_button"])
         btn2 = types.KeyboardButton(language_data["button"]["info_button"])
         btn3 = types.KeyboardButton(language_data["button"]["statistics_button"])
@@ -101,44 +100,39 @@ async def get_info(message):
     user_id = message.chat.id 
     await cursor.connect()
     try:
-        # Получаем метод оплаты пользователя
+        # getting the user's payment method
         payment_method = await cursor.get_payment_method(user_id=user_id)
 
         language_code = await cursor.get_user_language(user_id=user_id)
-        # Загружаем файл с данными на определенном языке
         language_data = await load_language_file(language_code=language_code)
 
-        # Формируем текст сообщения с информацией о методе оплаты
         text = f"{language_data['message']['info_message']} - {payment_method}"
-
-        # Отправляем сообщение пользователю
         await bot.send_message(message.chat.id, text=text, parse_mode='html')
-
     except Exception as e:
-        # Обработка исключений при работе с базой данных или отправке сообщения
         print(f"An error occurred: {e}")
 
     finally:
-        # В любом случае закрываем соединение с базой данных
         await cursor.close()
 
 
 @bot.message_handler(func=lambda message: message.text in ["Help", "Помощь", "Допомога"])
 async def get_help(message):
+
     user_id = message.chat.id 
     await cursor.connect()
     try:
         language_code = await cursor.get_user_language(user_id=user_id)
         language_data = await load_language_file(language_code=language_code)
+
         text = language_data["message"]["help_message"]
         await bot.send_message(message.chat.id, text=text)
-
     finally:
         await cursor.close()
 
 
 @bot.message_handler(func=lambda message: message.text in ["Statistics", "Статистика", "Статистика"])
 async def get_statistic(message):
+
     user_id = message.chat.id
     await cursor.connect()
     try:
@@ -164,7 +158,7 @@ async def change_language(message):
     user_id = message.chat.id
     await cursor.connect()
     try:
-        # Получаем код языка из бд
+
         language_code = await cursor.get_user_language(user_id=user_id)
         language_data = await load_language_file(language_code=language_code)
 
@@ -183,6 +177,7 @@ async def change_language(message):
 
 @bot.message_handler(func=lambda message: message.text in ["Activate", "Активировать", "Активувати"])
 async def get_activate(message):
+
     user_id = message.chat.id
     await cursor.connect()
     try:
@@ -190,20 +185,20 @@ async def get_activate(message):
         language_data = await load_language_file(language_code=language_code)
         text = f"<b>{language_data['message']['chose_region_message']}</b>"
     
-        # Создание инлайн-кнопок для каждого региона
+        # сreating inline buttons for each region
         markup = types.InlineKeyboardMarkup(row_width=2)  # Определение ширины строки
         regions = language_data['regions_spain']
         for region_id, region_name in regions.items():
             button = types.InlineKeyboardButton(region_name, callback_data=region_id)
             markup.add(button)
         await bot.send_message(user_id, text, parse_mode='html', reply_markup=markup)
-
     finally:
         await cursor.close()
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('region'))
 async def handle_region_callback(call):
+
     user_id = call.from_user.id
     await cursor.connect()
     try:
@@ -222,6 +217,8 @@ async def handle_region_callback(call):
 
 
 async def load_language_file(language_code):
+    # get a dictionary with a specific language
+    
     file_path = f"language/{language_code}.json"
     with open(file_path, 'r', encoding='utf-8') as file:
         language_data = json.load(file)

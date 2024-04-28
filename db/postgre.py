@@ -1,7 +1,10 @@
+"""
+Module for asynchronous work with Postgresql
+"""
+
 from dotenv import dotenv_values
-import os
 import asyncpg
-import asyncio
+
 
 
 # variables in .env file
@@ -9,10 +12,6 @@ dotenv_variables = {
     **dotenv_values()
 }
 
-import asyncpg
-from dotenv import dotenv_values
-
-dotenv_variables = dotenv_values()
 
 class BotDatabase:
 
@@ -48,12 +47,15 @@ class BotDatabase:
 
 
     async def check_user_id(self, user_id):
+        """
+        checking for user presence
+        """
         query = "SELECT user_id, language FROM users WHERE user_id = $1"
         row = await self.fetchrow(query, user_id)
-        return row[0] if row else row
+        return row[0] if row else row  #user_id or None
     
 
-    async def add_user(self, user_id, telegram_chat_id, nickname, language, region=None, payment_method=None):
+    async def add_user(self, user_id, telegram_chat_id, nickname, language, region=None, payment_method=None) -> None:
         query = """
                 INSERT INTO users (user_id, telegram_chat_id, nickname, region, language, payment_method)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -115,12 +117,3 @@ cursor = BotDatabase(
 )
 
 
-# async def test():
-#     global cursor
-#     await cursor.connect()
-#     a = await cursor.update_user(346488140, language = 'te')
-#     print(a)
-#     await cursor.close()
-
-# # Запуск асинхронной функции
-# asyncio.run(test())
